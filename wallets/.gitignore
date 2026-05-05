@@ -1,0 +1,10 @@
+# Solana batch wallet generator - never commit these
+private/
+public/master_pubkeys.txt
+wallets.csv
+proxies.txt
+logs/
+.env
+.venv/
+__pycache__/
+*.pyc

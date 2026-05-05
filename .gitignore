@@ -1,0 +1,50 @@
+# =========================================================================
+# Defense-in-depth root .gitignore. Each sub-phase has its own .gitignore
+# that already covers most of these. This file catches anything that slips.
+# =========================================================================
+
+# --- Secrets / credentials -----------------------------------------------
+.env
+*.env
+!.env.example
+
+# --- Phase 1 outputs (wallet keypairs, seed phrases) ---------------------
+private/
+public/master_pubkeys.txt
+wallets.csv
+proxies.txt
+
+# --- Phase 2 outputs (treasury keypair, funding state) -------------------
+treasury/
+
+# --- Phase 3 outputs (intermediate keypairs, multihop state) -------------
+intermediates/
+
+# --- Phase 4 outputs (Rust build artifacts) ------------------------------
+target/
+**/target/
+
+# --- Runtime state + logs ------------------------------------------------
+state/
+logs/
+*.log
+
+# --- Tooling -------------------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Editor / OS noise ---------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Cargo lockfile policy: keep it (it's a binary, not a library) -------
+# (default behavior for [[bin]] crates -- DO NOT ignore Cargo.lock)

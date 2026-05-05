@@ -1,0 +1,97 @@
+# pastors-bot configuration template.
+# Copy this file to `config.toml` and edit. CLI flags + env vars override these values.
+
+[rpc]
+# Helius API key. Reuse from ../funder/.env or get a new one at
+# https://dashboard.helius.dev/  (Sender + getPriorityFeeEstimate are on the
+# free tier and don't consume credits).
+helius_api_key = ""
+
+# Triton One full RPC URL with secret token already appended.
+# Sign up: https://forms.gle/rT6nPbUE4toyPfbb7
+# Format:  https://your-app.mainnet.rpcpool.com/your-secret-token
+triton_url = ""
+
+# Per-wallet RPC rotation: "round_robin" or "random".
+# Round-robin alternates Helius/Triton per wallet index.
+rotation_strategy = "round_robin"
+
+# Per-call HTTP timeout (ms). For sniping, 5s is generous; 1500-3000 is typical.
+timeout_ms = 5000
+
+[jito]
+# Default global block engine. To pin to a region, replace with one of:
+#   https://amsterdam.mainnet.block-engine.jito.wtf/api/v1/bundles
+#   https://frankfurt.mainnet.block-engine.jito.wtf/api/v1/bundles
+#   https://ny.mainnet.block-engine.jito.wtf/api/v1/bundles
+#   https://slc.mainnet.block-engine.jito.wtf/api/v1/bundles
+#   https://tokyo.mainnet.block-engine.jito.wtf/api/v1/bundles
+block_engine_url = "https://mainnet.block-engine.jito.wtf/api/v1/bundles"
+
+# Tip per bundle (lamports). Each bundle's last tx transfers a random amount
+# in this range to a random tip account.
+# 0.001 SOL = 1_000_000 lamports (typical baseline)
+# 0.01 SOL  = 10_000_000 lamports (competitive on hot launches)
+# 0.05 SOL  = 50_000_000 lamports (peak / war-time)
+tip_lamports_min = 1000000
+tip_lamports_max = 3000000
+
+[buy]
+# Per-wallet random buy SOL range. 40 wallets * avg = total entry size.
+min_sol = 0.05
+max_sol = 0.08
+
+# Slippage tolerance for the buy_exact_sol_in instruction (basis points).
+# 1500 bps = 15% (snipers eat slippage to land at all)
+slippage_bps = 1500
+
+# Random per-tx priority fee range (microLamports per CU).
+priority_micro_lamports_min = 100000
+priority_micro_lamports_max = 500000
+
+# CU limit for buy txs. Pump.fun buy uses ~50-80k CU, plus ATA create ~25k.
+compute_unit_limit = 100000
+
+[sell]
+# "bundled" -- 8 Jito bundles, atomic, slower to land but private mempool.
+# "parallel" -- 40 parallel Sender submits, faster, may have partial fills.
+strategy = "bundled"
+
+# Slippage for sell (bps). Higher than buy because exit liquidity is worse.
+slippage_bps = 2000
+
+# Number of Solana slots (~400ms each) to wait between buy landing and sell.
+# 5 slots = ~2 seconds. 25 slots = ~10 seconds. 150 slots = ~1 minute.
+after_blocks = 5
+
+priority_micro_lamports_min = 100000
+priority_micro_lamports_max = 500000
+compute_unit_limit = 100000
+
+[bundle]
+# Jito hard limit is 5 transactions per bundle. Don't change unless Jito does.
+size = 5
+
+# Microsecond jitter between consecutive tx constructions inside a bundle.
+# (Cosmetic -- on-chain ordering is determined by the bundle, not these gaps.)
+jitter_us_min = 0
+jitter_us_max = 1000
+
+# Microsecond jitter between submitting consecutive bundles to Jito.
+# All 8 bundles must land within ~1 slot (~400 ms) so this total spread
+# should stay under ~50 ms = 50_000 us across all 8 bundles.
+inter_bundle_jitter_us_min = 0
+inter_bundle_jitter_us_max = 5000
+
+[trigger]
+# "manual" or "scheduled" -- the UI handles both at runtime.
+mode = "manual"
+
+[ui]
+host = "127.0.0.1"
+port = 7777
+
+[paths]
+# Phase 1 outputs that the bot consumes
+wallets_csv = "../wallets/wallets.csv"
+wallets_private_dir = "../wallets/private"

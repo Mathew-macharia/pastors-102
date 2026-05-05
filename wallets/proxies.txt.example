@@ -1,0 +1,40 @@
+# Production proxy list for the wallet generator.
+# One entry per line. Format:  scheme://username:password@host:port
+#
+# Supported schemes: http, https, socks5, socks5h
+#
+# IMPORTANT: copy this file to `proxies.txt` (NO `.example`) and fill in
+# real credentials. `proxies.txt` is in .gitignore and will never be
+# committed.
+#
+# The script automatically injects a unique sticky-session id into the
+# username for each wallet, in the form:
+#
+#     scheme://USER-session-wXXX-NNNNN:PASSWORD@host:port
+#
+# This convention works out of the box with:
+#   - Smartproxy / Decodo  (recommended)
+#   - Bright Data
+#   - Oxylabs
+#   - IPRoyal
+#
+# A single base endpoint is enough — every wallet gets its own sticky
+# session. If you provide multiple endpoints (e.g. different geos), the
+# script round-robins across them.
+#
+# ---- examples (NOT real, replace with yours) -----------------------------
+# Smartproxy / Decodo residential:
+# http://YOUR_USER:YOUR_PASS@gate.decodo.com:7000
+#
+# Bright Data residential (zone format):
+# http://brd-customer-hl_XXXX-zone-residential:YOUR_PASS@brd.superproxy.io:22225
+#
+# Oxylabs residential:
+# http://customer-YOUR_USER:YOUR_PASS@pr.oxylabs.io:7777
+#
+# IPRoyal residential:
+# http://YOUR_USER:YOUR_PASS@geo.iproyal.com:12321
+#
+# Generic SOCKS5 (e.g. self-hosted):
+# socks5h://YOUR_USER:YOUR_PASS@1.2.3.4:1080
+# --------------------------------------------------------------------------

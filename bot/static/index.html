@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>pastors-bot &middot; control panel</title>
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --card: #14171c;
+      --fg: #e6e8eb;
+      --muted: #8a92a0;
+      --accent: #36d399;
+      --danger: #f87272;
+      --warn: #fbbd23;
+      --border: #2a2f38;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      padding: 24px;
+      min-height: 100vh;
+    }
+    h1 { font-weight: 600; margin: 0 0 8px; font-size: 22px; }
+    .sub { color: var(--muted); margin-bottom: 24px; font-size: 13px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      max-width: 720px;
+    }
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0b0d10;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: ui-monospace, monospace;
+      margin-bottom: 14px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+    button {
+      padding: 12px 18px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-arm { background: #1f4f8b; color: white; }
+    .btn-fire { background: var(--danger); color: white; font-size: 16px; padding: 16px 32px; width: 100%; }
+    .btn-cancel { background: #3a3f48; color: var(--fg); }
+    .status-box {
+      background: #0b0d10;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .pill-idle { background: #2a2f38; color: var(--muted); }
+    .pill-armed, .pill-scheduled { background: #1f4f8b; color: #b3d4ff; }
+    .pill-firing_buy, .pill-firing_sell, .pill-firing { background: var(--danger); color: white; }
+    .pill-done { background: #1a5d3a; color: var(--accent); }
+    .pill-error, .pill-sell_error { background: var(--danger); color: white; }
+    .small { font-size: 11px; color: var(--muted); }
+    .actions { display: flex; gap: 12px; margin-top: 8px; }
+    .actions > * { flex: 1; }
+  </style>
+</head>
+<body>
+  <h1>pastors-bot</h1>
+  <div class="sub">40-wallet Pump.fun sniper &middot; Helius + Triton + Jito bundles</div>
+
+  <div class="card">
+    <label>Token mint (base58)</label>
+    <input id="mint" placeholder="enter the token mint pubkey of your launched coin" autocomplete="off">
+
+    <label>Creator wallet (base58)</label>
+    <input id="creator" placeholder="the wallet that launched the token (you)" autocomplete="off">
+
+    <div class="row">
+      <div>
+        <label>Schedule local time (optional)</label>
+        <input id="schedule" placeholder="2026-05-05 14:00:00" autocomplete="off">
+      </div>
+      <div>
+        <label>Timezone</label>
+        <select id="tz">
+          <option value="">(none -- manual fire only)</option>
+          <option value="America/New_York">America/New_York (EST/EDT)</option>
+          <option value="America/Los_Angeles">America/Los_Angeles</option>
+          <option value="Europe/London">Europe/London</option>
+          <option value="Europe/Berlin">Europe/Berlin</option>
+          <option value="Asia/Singapore">Asia/Singapore</option>
+          <option value="Asia/Tokyo">Asia/Tokyo</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-arm" id="btn-arm">arm</button>
+      <button class="btn-cancel" id="btn-cancel">cancel schedule</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="btn-fire" id="btn-fire" disabled>FIRE NOW</button>
+    <div class="small" style="text-align: center; margin-top: 10px;">
+      Manual override. Submits 8 Jito bundles to the same upcoming slot.
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Status <span id="pill" class="pill pill-idle">idle</span></label>
+    <div class="status-box" id="status">waiting...</div>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return res.json();
+}
+
+$('btn-arm').addEventListener('click', async () => {
+  const mint = $('mint').value.trim();
+  const creator = $('creator').value.trim();
+  const sched = $('schedule').value.trim();
+  const tz = $('tz').value;
+  if (!mint || !creator) {
+    alert('mint + creator required');
+    return;
+  }
+  const body = {mint, creator};
+  if (sched && tz) {
+    body.schedule_local = sched;
+    body.schedule_tz = tz;
+  }
+  const r = await api('/api/arm', body);
+  if (r.ok) {
+    $('btn-fire').disabled = false;
+  } else {
+    alert(r.message);
+  }
+});
+
+$('btn-fire').addEventListener('click', async () => {
+  if (!confirm('Fire 40 wallets now?')) return;
+  await api('/api/fire');
+});
+
+$('btn-cancel').addEventListener('click', async () => {
+  await api('/api/cancel');
+});
+
+async function poll() {
+  try {
+    const r = await fetch('/api/status').then(r => r.json());
+    const status = r.status || 'idle';
+    const pill = $('pill');
+    pill.className = 'pill pill-' + status.replace(/[^a-z_]/gi, '_');
+    pill.textContent = status;
+
+    let lines = [];
+    if (r.mint) lines.push('mint: ' + r.mint);
+    if (r.creator) lines.push('creator: ' + r.creator);
+    if (r.scheduled_at_utc) lines.push('scheduled at (UTC): ' + r.scheduled_at_utc);
+    if (r.last_buy_results) {
+      lines.push('');
+      lines.push('--- buy bundles ---');
+      lines.push(JSON.stringify(r.last_buy_results, null, 2));
+    }
+    if (r.last_sell_results) {
+      lines.push('');
+      lines.push('--- sell bundles ---');
+      lines.push(JSON.stringify(r.last_sell_results, null, 2));
+    }
+    $('status').textContent = lines.join('\n') || status;
+  } catch (e) {
+    $('status').textContent = 'poll error: ' + e;
+  }
+}
+poll();
+setInterval(poll, 1500);
+</script>
+</body>
+</html>

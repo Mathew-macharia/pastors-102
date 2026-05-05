@@ -1,0 +1,8 @@
+# Phase 2 - never commit any of these
+treasury/
+state/
+logs/
+.env
+.venv/
+__pycache__/
+*.pyc
