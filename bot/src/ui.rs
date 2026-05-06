@@ -29,6 +29,8 @@ pub struct UiState {
     pub mint: Option<String>,
     pub creator: Option<String>,
     pub scheduled_at_utc: Option<String>,
+    /// User-supplied override for `sell.after_blocks`. None = use config/env.
+    pub sell_after_blocks: Option<u64>,
     pub status: String,
     pub last_buy_results: Option<serde_json::Value>,
     pub last_sell_results: Option<serde_json::Value>,
@@ -48,6 +50,9 @@ pub struct ArmRequest {
     /// If absent, only the manual fire button will trigger.
     pub schedule_local: Option<String>,
     pub schedule_tz: Option<String>,
+    /// Optional override for `sell.after_blocks`. If None, the value from
+    /// config.toml (or the SELL_AFTER_BLOCKS env var) is used.
+    pub sell_after_blocks: Option<u64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -78,6 +83,7 @@ async fn arm(State(s): State<AppState>, Json(req): Json<ArmRequest>) -> impl Int
         ui.mint = Some(req.mint.clone());
         ui.creator = Some(req.creator.clone());
         ui.scheduled_at_utc = None;
+        ui.sell_after_blocks = req.sell_after_blocks;
         ui.status = "armed".into();
     }
 

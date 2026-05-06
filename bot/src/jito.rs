@@ -56,15 +56,25 @@ pub struct BundleStatus {
 
 impl JitoClient {
     pub fn new(block_engine_url: impl Into<String>, timeout_ms: u64) -> Result<Self> {
+        // Sized for the sell-time hot path: 8 bundles fired in parallel.
+        // pool_max_idle_per_host kept high so HTTP/2 conn (or, if h1, the
+        // 8 keep-alive conns) survives the brief idle between buy and sell.
         let http = reqwest::Client::builder()
             .timeout(Duration::from_millis(timeout_ms))
-            .pool_max_idle_per_host(8)
+            .pool_max_idle_per_host(64)
+            .pool_idle_timeout(Duration::from_secs(60))
+            .tcp_nodelay(true)
+            .http2_adaptive_window(true)
             .build()
             .context("building Jito HTTP client")?;
         Ok(Self {
             block_engine_url: block_engine_url.into(),
             http,
         })
+    }
+
+    pub fn block_engine_url(&self) -> &str {
+        &self.block_engine_url
     }
 
     /// Submit a bundle of up to 5 signed VersionedTransactions to the block

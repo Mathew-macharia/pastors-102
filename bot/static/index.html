@@ -134,6 +134,13 @@
       </div>
     </div>
 
+    <label>Sell after N blocks (1 slot = ~400 ms)</label>
+    <input id="after-blocks" type="number" min="0" max="10000" placeholder="leave blank to use config / SELL_AFTER_BLOCKS env" autocomplete="off">
+    <div class="small" style="margin-top:-8px;margin-bottom:14px;">
+      Examples: 5 = ~2 s &middot; 25 = ~10 s &middot; 150 = ~1 min &middot; 750 = ~5 min.
+      Sell uses 40 parallel txs through Helius Sender (dual-route) with up to 3 retries per wallet, so every wallet that holds tokens exits independently.
+    </div>
+
     <div class="actions">
       <button class="btn-arm" id="btn-arm">arm</button>
       <button class="btn-cancel" id="btn-cancel">cancel schedule</button>
@@ -169,6 +176,7 @@ $('btn-arm').addEventListener('click', async () => {
   const creator = $('creator').value.trim();
   const sched = $('schedule').value.trim();
   const tz = $('tz').value;
+  const afterBlocksRaw = $('after-blocks').value.trim();
   if (!mint || !creator) {
     alert('mint + creator required');
     return;
@@ -177,6 +185,14 @@ $('btn-arm').addEventListener('click', async () => {
   if (sched && tz) {
     body.schedule_local = sched;
     body.schedule_tz = tz;
+  }
+  if (afterBlocksRaw !== '') {
+    const n = parseInt(afterBlocksRaw, 10);
+    if (Number.isNaN(n) || n < 0) {
+      alert('sell after N blocks must be a non-negative integer');
+      return;
+    }
+    body.sell_after_blocks = n;
   }
   const r = await api('/api/arm', body);
   if (r.ok) {
@@ -207,6 +223,9 @@ async function poll() {
     if (r.mint) lines.push('mint: ' + r.mint);
     if (r.creator) lines.push('creator: ' + r.creator);
     if (r.scheduled_at_utc) lines.push('scheduled at (UTC): ' + r.scheduled_at_utc);
+    if (r.sell_after_blocks !== null && r.sell_after_blocks !== undefined) {
+      lines.push('sell after N blocks (override): ' + r.sell_after_blocks);
+    }
     if (r.last_buy_results) {
       lines.push('');
       lines.push('--- buy bundles ---');

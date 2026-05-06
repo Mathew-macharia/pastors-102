@@ -88,15 +88,16 @@ pub struct BuyConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SellConfig {
-    /// Sell strategy: "bundled" (Jito atomic) or "parallel" (40 parallel sends).
-    #[serde(default = "default_sell_strategy")]
-    pub strategy: String,
-
-    /// Slippage for sell in basis points.
+    /// Slippage for sell in basis points. Note: the strategy uses
+    /// `min_sol_output = 1` lamport regardless, so this is informational
+    /// for now -- kept here for future use if you ever want to refuse
+    /// to dump at sub-cost.
     #[serde(default = "default_sell_slippage_bps")]
     pub slippage_bps: u32,
 
-    /// Number of blocks to wait after the buy slot before triggering sell.
+    /// Number of slots to wait after the buy lands before triggering
+    /// sell. Overridable at runtime via the SELL_AFTER_BLOCKS env var
+    /// or the UI's "Sell after N blocks" input.
     #[serde(default = "default_sell_after_blocks")]
     pub after_blocks: u64,
 
@@ -177,7 +178,6 @@ fn default_prio_min() -> u64 { 100_000 }
 fn default_prio_max() -> u64 { 500_000 }
 fn default_buy_cu_limit() -> u32 { 100_000 }
 fn default_sell_cu_limit() -> u32 { 100_000 }
-fn default_sell_strategy() -> String { "bundled".into() }
 fn default_sell_after_blocks() -> u64 { 5 }
 fn default_bundle_size() -> usize { 5 }
 fn default_bundle_jitter_us_min() -> u64 { 0 }
@@ -214,6 +214,11 @@ impl Config {
                 cfg.rpc.triton_url = v;
             }
         }
+        if let Ok(v) = std::env::var("SELL_AFTER_BLOCKS") {
+            if let Ok(n) = v.trim().parse::<u64>() {
+                cfg.sell.after_blocks = n;
+            }
+        }
 
         cfg.validate()?;
         Ok(cfg)
@@ -231,9 +236,6 @@ impl Config {
         }
         if self.bundle.size == 0 || self.bundle.size > 5 {
             anyhow::bail!("bundle size must be 1..=5 (Jito hard limit)");
-        }
-        if !matches!(self.sell.strategy.as_str(), "bundled" | "parallel") {
-            anyhow::bail!("sell.strategy must be 'bundled' or 'parallel'");
         }
         Ok(())
     }

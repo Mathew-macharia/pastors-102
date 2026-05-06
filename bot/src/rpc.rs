@@ -58,9 +58,17 @@ impl RpcPool {
             label: "triton",
         };
         let endpoints = vec![helius.clone(), triton];
+        // Tuned for the sell-time hot path: 40 parallel POSTs to Sender +
+        // 8 parallel POSTs to Jito BE. With HTTP/2 multiplexing, one TCP
+        // conn per host can carry all 40 streams; we keep 64 idle in
+        // reserve for slow-start scenarios. http2_prior_knowledge=false
+        // because both Helius and Jito advertise h2 via ALPN.
         let http = reqwest::Client::builder()
             .timeout(Duration::from_millis(cfg.rpc.timeout_ms))
-            .pool_max_idle_per_host(8)
+            .pool_max_idle_per_host(64)
+            .pool_idle_timeout(Duration::from_secs(60))
+            .tcp_nodelay(true)
+            .http2_adaptive_window(true)
             .build()
             .context("building HTTP client")?;
         Ok(Self {
@@ -88,6 +96,45 @@ impl RpcPool {
 
     pub fn sender_dual(&self) -> &str {
         &self.inner.sender_url_dual
+    }
+
+    /// Pre-establish HTTP/2 connections to the sell-time hot endpoints
+    /// (Helius Sender dual-route + the configured Jito block engine),
+    /// so the first sell fire doesn't pay TCP + TLS handshake cost
+    /// (~30-100 ms otherwise). Called once at bot startup.
+    pub async fn warm_up(&self, jito_bundles_url: &str) {
+        let urls = [
+            self.inner.sender_url_dual.as_str(),
+            self.inner.sender_url_swqos.as_str(),
+            self.inner.primary.url.as_str(),
+            jito_bundles_url,
+        ];
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 0,
+            "method": "getHealth",
+            "params": [],
+        });
+        let pings: Vec<_> = urls
+            .iter()
+            .map(|u| {
+                let body = body.clone();
+                async move {
+                    // We don't care about the response -- just want the
+                    // TCP+TLS handshake to be done and the connection
+                    // to be in the pool.
+                    let _ = self
+                        .inner
+                        .http
+                        .post(*u)
+                        .json(&body)
+                        .timeout(Duration::from_millis(2000))
+                        .send()
+                        .await;
+                }
+            })
+            .collect();
+        ::futures::future::join_all(pings).await;
     }
 
     /// Assign a per-wallet RPC endpoint. Round-robin over the configured pool.

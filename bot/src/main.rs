@@ -3,7 +3,10 @@
 //! Pump.fun sniper bot:
 //!   * 40 wallets buy a target token in 8 atomic Jito bundles (5 wallets each)
 //!   * Helius + Triton RPC rotation
-//!   * Sell after N blocks (bundled or parallel)
+//!   * Sell after N blocks via dual-path: every sell tx is fired through
+//!     BOTH a Jito bundle AND Helius Sender's dual-route at the same
+//!     instant. First-to-land per signature wins; the network
+//!     deduplicates. Stragglers retry with bumped fees.
 //!   * Triggered by either a UI button or a scheduled time
 
 mod config;
@@ -28,7 +31,7 @@ use tracing_subscriber::EnvFilter;
 use crate::config::Config;
 use crate::jito::JitoClient;
 use crate::rpc::RpcPool;
-use crate::strategy::Strategy;
+use crate::strategy::{SellOverrides, Strategy};
 use crate::trigger::Trigger;
 use crate::ui::{AppState, UiState};
 
@@ -88,6 +91,11 @@ async fn main() -> Result<()> {
     // Build RPC pool + Jito client
     let rpc = RpcPool::new(&cfg)?;
     let jito = JitoClient::new(cfg.jito.block_engine_url.clone(), cfg.rpc.timeout_ms)?;
+
+    // Pre-warm HTTP/2 connections to the sell-time hot endpoints so the
+    // first FIRE doesn't pay TCP+TLS handshake cost (~30-100 ms).
+    rpc.warm_up(jito.block_engine_url()).await;
+    info!("HTTP connections to Sender + Jito BE pre-warmed");
 
     // Resolve fee recipient
     let fee_recipient = strategy::parse_pubkey(&cli.fee_recipient)
@@ -188,9 +196,15 @@ async fn main() -> Result<()> {
                 };
             }
 
+            // Snapshot UI overrides for this fire (the user can have set
+            // a custom N via the UI's "Sell after N blocks" input).
+            let overrides = SellOverrides {
+                after_blocks: snap.sell_after_blocks,
+            };
+
             // Wait N blocks then sell
             if let Some(s) = ref_slot {
-                if let Err(e) = strat_for_task.wait_blocks_after(s).await {
+                if let Err(e) = strat_for_task.wait_blocks_after(s, &overrides).await {
                     warn!("wait_blocks_after error: {}", e);
                 }
             } else {
@@ -203,10 +217,11 @@ async fn main() -> Result<()> {
             }
             match strat_for_task.fire_sell(mint, creator).await {
                 Ok(sr) => {
+                    let confirmed = sr.iter().filter(|r| r.status == "confirmed").count();
                     let mut ui = firing_state.write().await;
                     ui.last_sell_results = Some(serde_json::to_value(&sr).unwrap_or_default());
-                    ui.status = "done".into();
-                    info!("sell done: {} entries", sr.len());
+                    ui.status = format!("done ({}/{} sold)", confirmed, sr.len());
+                    info!("sell done: {}/{} confirmed", confirmed, sr.len());
                 }
                 Err(e) => {
                     error!("fire_sell failed: {}", e);

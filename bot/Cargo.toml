@@ -12,19 +12,24 @@ name = "pastors-bot"
 path = "src/main.rs"
 
 [dependencies]
-# Solana core
-solana-sdk = "2"
-solana-client = "2"
-solana-program = "2"
-solana-transaction-status = "2"
+# Solana core (pinned to 2.2.x ecosystem to align with the SPL crates below)
+solana-sdk = "2.2"
+solana-client = "2.2"
+solana-program = "2.2"
+solana-transaction-status = "2.2"
 
 # SPL
-spl-token = { version = "8", features = ["no-entrypoint"] }
-spl-associated-token-account = { version = "5", features = ["no-entrypoint"] }
+# spl-associated-token-account 7.x is the version aligned with solana-program 2.2.x
+# (newer 8.x switched to split-crate model; 5.x/6.x pin solana-program 2.0.x or 2.1.x).
+spl-associated-token-account = { version = "7", features = ["no-entrypoint"] }
 
 # Async + HTTP
 tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+# NOTE: native-tls (OpenSSL on Linux) is used over rustls-tls because rustls
+# 0.22 forces zeroize >=1.6, which conflicts with curve25519-dalek 3.2.1
+# (pinned by spl-token-2022 5.x's confidential-transfer-proof-generation),
+# itself pinned to zeroize <1.4. setup.sh installs libssl-dev for this.
+reqwest = { version = "0.12", features = ["json", "native-tls"], default-features = false }
 futures = "0.3"
 
 # Web UI
@@ -37,7 +42,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bincode = "1.3"
 borsh = "1"
-bs58 = "0.5"
+bs58 = "0.5.1"
 base64 = "0.22"
 toml = "0.8"
 

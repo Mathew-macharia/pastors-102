@@ -28,8 +28,12 @@ timeout_ms = 5000
 #   https://tokyo.mainnet.block-engine.jito.wtf/api/v1/bundles
 block_engine_url = "https://mainnet.block-engine.jito.wtf/api/v1/bundles"
 
-# Tip per bundle (lamports). Each bundle's last tx transfers a random amount
-# in this range to a random tip account.
+# Tip per bundle for BUYS (lamports). Each buy bundle's last tx transfers
+# a random amount in this range to a random tip account.
+# For SELLS, every tx carries its own tip transfer (because the same signed
+# tx is submitted via both Sender and Jito, and Sender's dual-route requires
+# a tip per tx) -- the tip uses these same min/max values FLOORED at the
+# Sender dual-route minimum of 0.0002 SOL = 200_000 lamports.
 # 0.001 SOL = 1_000_000 lamports (typical baseline)
 # 0.01 SOL  = 10_000_000 lamports (competitive on hot launches)
 # 0.05 SOL  = 50_000_000 lamports (peak / war-time)
@@ -53,15 +57,35 @@ priority_micro_lamports_max = 500000
 compute_unit_limit = 100000
 
 [sell]
-# "bundled" -- 8 Jito bundles, atomic, slower to land but private mempool.
-# "parallel" -- 40 parallel Sender submits, faster, may have partial fills.
-strategy = "bundled"
+# Sell strategy is FIXED to: DUAL-PATH simultaneous fire.
+# For every selling wallet we sign ONE tx (with its own tip transfer) and
+# submit it through TWO independent paths in parallel:
+#   * 40 standalone POSTs to Helius Sender's dual-route endpoint
+#     (forwards to Jito-auction + validator-attached SWQoS in parallel)
+#   * 8 Jito bundles of 5 tx each, fired concurrently to the Block Engine
+# All 48 outbound POSTs fire from independently-spawned tokio tasks over
+# HTTP/2-multiplexed keep-alive connections, so submission spread is
+# sub-millisecond. The network deduplicates by signature: whichever path
+# reaches the leader first wins.
+# Stragglers (wallets whose first-wave sig isn't confirmed in ~1.5 s)
+# are rebuilt with a fresh blockhash + bumped priority fee + bumped tip
+# and re-fired through both paths. Up to 2 retry waves.
+# See bot/README.md "Why dual-path simultaneous sells" for details.
 
-# Slippage for sell (bps). Higher than buy because exit liquidity is worse.
+# Slippage tolerance in basis points. Currently INFORMATIONAL only -- the
+# sell instruction always uses min_sol_output=1 lamport to guarantee exit.
+# To refuse to dump at sub-cost, edit min_sol_output in
+# strategy::build_sell_wave.
 slippage_bps = 2000
 
 # Number of Solana slots (~400ms each) to wait between buy landing and sell.
-# 5 slots = ~2 seconds. 25 slots = ~10 seconds. 150 slots = ~1 minute.
+# 0 = sell immediately after buy lands (next available slot)
+# 5 = ~2 seconds          25  = ~10 seconds
+# 150 = ~1 minute         750 = ~5 minutes
+#
+# Override at runtime by either:
+#   * env var:  SELL_AFTER_BLOCKS=25 ./target/release/pastors-bot ...
+#   * UI input: the "Sell after N blocks" field on the control panel
 after_blocks = 5
 
 priority_micro_lamports_min = 100000
