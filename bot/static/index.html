@@ -137,8 +137,8 @@
     <label>Sell after N blocks (1 slot = ~400 ms)</label>
     <input id="after-blocks" type="number" min="0" max="10000" placeholder="leave blank to use config / SELL_AFTER_BLOCKS env" autocomplete="off">
     <div class="small" style="margin-top:-8px;margin-bottom:14px;">
-      Examples: 5 = ~2 s &middot; 25 = ~10 s &middot; 150 = ~1 min &middot; 750 = ~5 min.
-      Sell uses 40 parallel txs through Helius Sender (dual-route) with up to 3 retries per wallet, so every wallet that holds tokens exits independently.
+      Examples: 5 = ~2 s &middot; 25 = ~10 s &middot; 150 = ~1 min &middot; 750 = ~5 min.<br>
+      Sell fires DUAL-PATH: every signed tx is broadcast through BOTH Helius Sender (dual-route) AND a Jito bundle at the same instant. Network deduplicates by signature; whichever path lands first wins. Up to 2 retry waves on stragglers with bumped fees. Submission spread is sub-millisecond; inclusion is bounded by Solana's slot time (~400 ms).
     </div>
 
     <div class="actions">
@@ -233,8 +233,11 @@ async function poll() {
     }
     if (r.last_sell_results) {
       lines.push('');
-      lines.push('--- sell bundles ---');
-      lines.push(JSON.stringify(r.last_sell_results, null, 2));
+      const sr = r.last_sell_results;
+      const ok = Array.isArray(sr) ? sr.filter(x => x.status === 'confirmed').length : 0;
+      const total = Array.isArray(sr) ? sr.length : 0;
+      lines.push(`--- sell results (${ok}/${total} confirmed, dual-path) ---`);
+      lines.push(JSON.stringify(sr, null, 2));
     }
     $('status').textContent = lines.join('\n') || status;
   } catch (e) {
