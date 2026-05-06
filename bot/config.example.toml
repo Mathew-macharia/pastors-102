@@ -42,8 +42,10 @@ tip_lamports_max = 3000000
 
 [buy]
 # Per-wallet random buy SOL range. 40 wallets * avg = total entry size.
-min_sol = 0.05
-max_sol = 0.08
+# NOTE: If you are funding wallets with ~0.02 SOL (1 SOL total budget on Binance),
+# you MUST keep these maximums around 0.01 to 0.015 SOL to leave room for fees!
+min_sol = 0.01
+max_sol = 0.015
 
 # Slippage tolerance for the buy_exact_sol_in instruction (basis points).
 # 1500 bps = 15% (snipers eat slippage to land at all)

@@ -1,4 +1,14 @@
-# Solana Batch Funder (Phase 2)
+# [DEPRECATED] Solana Batch Funder (Phase 2)
+
+**🚨 WARNING: DO NOT USE THIS SCRIPT IF YOU WANT TO AVOID ON-CHAIN CLUSTERING. 🚨**
+
+This script funds 40 wallets from a single Treasury wallet. To modern 2026 sniper bots and analytics tools (like Sybil Shield or Bubblemaps), this immediately links all 40 wallets into a single "Entity". High-tier sniper bots will see this cluster buy a token, flag it as a Wash Trade / Rug Risk, and refuse to buy.
+
+**To achieve true stealth, use `binance_funder/` instead.** It withdraws directly from Binance to your 40 wallets, making them look like 40 unrelated strangers.
+
+---
+
+## Original Readme Below (For reference only)
 
 Fund the 40 wallets produced by [phase 1](../wallets/) from a single treasury,
 using **Helius Sender** for ultra-low-latency transaction landing via SWQoS,

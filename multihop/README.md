@@ -1,4 +1,14 @@
-# Multi-hop Funder (Phase 2 — alternative to `funder/`)
+# [DEPRECATED] Multi-hop Funder (Phase 2 — alternative to `funder/`)
+
+**🚨 WARNING: DO NOT USE THIS SCRIPT FOR CLUSTERING IMMUNITY. 🚨**
+
+This pipeline adds friction for human investigators but provides **zero protection** against professional on-chain clustering algorithms or high-frequency 2026 sniper bots. Value-flow algorithms will instantly trace the origin back to your single Treasury wallet, group your 40 wallets into one cluster, and blacklist your token.
+
+**To achieve true stealth, use `binance_funder/` instead.**
+
+---
+
+## Original Readme Below (For reference only)
 
 Replaces the direct treasury → 40 fan-out from `funder/` with a 5-stage
 pipeline that interposes 16 fresh intermediate wallets and two Jupiter

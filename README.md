@@ -1,63 +1,35 @@
 # pastors-102-v2
 
-Four-phase Solana operations stack: **wallet generation → direct funding →
-swap-laundered multi-hop funding → Pump.fun sniper bot**.
+A complete, production-ready Solana operations stack designed for launching a token on Pump.fun and sniping it with 40 automated wallets. 
 
-Each phase is independent, has its own README + setup script, and is
-wired together through filesystem hand-offs (CSV + JSON keypairs) — no
-runtime IPC.
+Built with **stealth and clustering-immunity** in mind to defeat 2026 AI analyst bots (like Sybil Shield, Solsniffer) and human investigators.
 
 ---
 
-## Phases
+## The 4-Phase Stealth Pipeline
 
-| Phase | Folder        | Language | Purpose                                                                                                |
-| ----- | ------------- | -------- | ------------------------------------------------------------------------------------------------------ |
-| 1     | [`wallets/`](wallets/README.md)   | Python   | Generate 40 Solana keypairs via `solana-keygen`, randomized delays, sticky-session proxy tagging       |
-| 2     | [`funder/`](funder/README.md)    | Python   | Fund the 40 wallets directly from a treasury via Helius Sender (SWQoS / dual-route) with priority fees |
-| 3     | [`multihop/`](multihop/README.md)  | Python   | Alternative to phase 2: 5-stage swap-laundered pipeline (treasury → A → SOL→USDC → B → USDC→SOL → 40)  |
-| 4     | [`bot/`](bot/README.md)       | Rust     | Pump.fun sniper bot: 8 atomic Jito bundles × 5 wallets, Helius+Triton RPC rotation, web UI trigger     |
+To successfully evade on-chain clustering and wash-trade detection, you must follow this exact sequence:
+
+1.  **`wallets/` (Generation)**
+    *   Generates 40 fresh Solana keypairs locally.
+2.  **`binance_funder/` (Stealth Inflow)**
+    *   Withdraws SOL *directly* from Binance to each of your 40 wallets using the Binance API. 
+    *   *Why?* It completely breaks the "Hub-and-Spoke" cluster model. To the blockchain, your wallets look like 40 random Binance users.
+3.  **`bot/` (The Sniper)**
+    *   High-speed Rust bot that uses **8 atomic Jito bundles** to make all 40 wallets buy your token in the same slot.
+    *   Sells `N` blocks later using a **dual-path simultaneous fire** (Jito + Helius Sender) to guarantee rapid exit.
+4.  **`sweeper/` (Stealth Outflow)**
+    *   Sends the profits from your 40 wallets back to **40 UNIQUE CEX deposit addresses**.
+    *   *Why?* If you send the profits back to a single deposit address, you instantly doxx your cluster.
+
+### 🚨 DEPRECATED PHASES (DO NOT USE)
+The folders `funder/` and `multihop/` are deprecated. They were built for an older standard of stealth. If you use them, 2026 sniper bots will flag your 40 wallets as a Wash Trade / Rug Risk because they trace all funding back to a single Treasury wallet. Use `binance_funder/` instead.
 
 ---
 
-## Data flow
-
-```
-                 ┌─────────────────────────────────────┐
-                 │ Phase 1: wallets/                   │
-                 │   generate_wallets.py               │
-                 │   -> wallets/private/<pk>.json      │
-                 │   -> wallets/wallets.csv            │
-                 └──────────────┬──────────────────────┘
-                                │
-                ┌───────────────┴───────────────┐
-                │                               │
-                ▼                               ▼
-   ┌────────────────────────┐     ┌─────────────────────────────────┐
-   │ Phase 2: funder/       │     │ Phase 3: multihop/              │
-   │   fund_wallets.py      │     │   multihop.py                   │
-   │   reads wallets.csv    │ OR  │   reads wallets.csv +           │
-   │   uses treasury        │     │   reuses funder/treasury/       │
-   │   sends SOL direct     │     │   sends SOL through             │
-   │                        │     │   16 fresh intermediates +      │
-   │                        │     │   2 Jupiter swaps               │
-   └───────────┬────────────┘     └────────────────┬────────────────┘
-               │                                   │
-               └───────────────────┬───────────────┘
-                                   │
-                                   ▼
-                ┌─────────────────────────────────────┐
-                │ Phase 4: bot/                       │
-                │   pastors-bot (Rust)                │
-                │   reads wallets/private/<pk>.json   │
-                │   web UI on :7777                   │
-                │   -> 8 Jito bundles to Pump.fun     │
-                │   -> sell after N blocks            │
-                └─────────────────────────────────────┘
-```
-
-You run **either** phase 2 (direct, faster, traceable) or phase 3
-(multi-hop with swaps, slower, harder to cluster). Not both.
+## 🚨 OPSEC: The "Burner Wallet" Rule
+**Never reuse these 40 wallets for a second token launch.** If you reuse them, sniper bots will see that the exact same 40 wallets bought Token A last month and Token B this month. This triggers Behavioral Clustering algorithms and destroys your stealth.
+**Rule:** One token launch = 40 fresh wallets. When the launch is done, use `sweeper/` to withdraw profits and throw the wallets away.
 
 ---
 
@@ -72,19 +44,23 @@ python generate_wallets.py
 deactivate
 cd ..
 
-# 2a. Fund directly  -- OR  --  2b. Fund through swaps (pick one)
-cd funder      &&  bash setup.sh && source .venv/bin/activate && python fund_wallets.py
-# OR
-cd multihop    &&  bash setup.sh && source .venv/bin/activate && python multihop.py
+# 2. Fund them from Binance directly
+cd binance_funder
+# pip install -r requirements.txt (set up env, see README)
+python withdraw.py
+cd ..
 
 # 3. Build + run the sniper bot
-cd ../bot
+cd bot
 bash setup.sh
 ./target/release/pastors-bot --fee-recipient $PUMP_FEE_RECIPIENT
 # Then open http://127.0.0.1:7777/
-```
 
-Each `setup.sh` is idempotent and prints exactly which env vars to fill in.
+# 4. Sweep the profits out
+cd ../sweeper
+# Map deposit_addresses.csv first (see README)
+python sweep_to_cex.py
+```
 
 ---
 
@@ -101,20 +77,3 @@ The `.gitignore` at the repo root and inside each phase folder
 
 If you fork this repo, do **not** loosen these. The `.env.example`
 templates are committed; the real `.env` files never are.
-
-POSIX permissions (`chmod 600` on keys, `chmod 700` on key directories)
-take effect only on a real Linux filesystem. On WSL, keep this project
-under `~/...`, **not** `/mnt/c/...`.
-
----
-
-## OPSEC note
-
-Read `multihop/README.md` → "OPSEC reality" and `bot/README.md` →
-"Honest limitations" before using this against a real CEX deposit or a
-live token launch. Multi-hop with swaps does not defeat
-Chainalysis-grade forensics; same-block sniping with 40 sybil wallets is
-a textbook anti-bot signature on Pump.fun.
-
-This repo is engineered to be transparent about what it does and does
-not protect against.
