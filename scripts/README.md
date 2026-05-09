@@ -42,6 +42,27 @@ Different user or parent path on the server:
 
 **After upload:** on the server, `cd ~/pastors-102-v2` (or `/root/pastors-102-v2`), install Rust/Python deps, copy any `.env` / `wallets/private` that were never in git, then `cargo build --release` in `bot/`.
 
+### If SSH keys are not on the server yet (password upload)
+
+Hetzner emails you a **root password**. Use it **once** locally (do not commit the password):
+
+```powershell
+cd C:\Users\Traveler\Desktop\Personal-projects\pastors-102-v2
+pip install -r scripts\requirements-deploy.txt
+$env:DEPLOY_SSH_PASSWORD = "PASTE_ROOT_PASSWORD_HERE"
+$env:DEPLOY_SSH_HOST = "178.105.92.47"
+python scripts\deploy_paramiko.py
+Remove-Item Env:DEPLOY_SSH_PASSWORD
+```
+
+Then install your **public** key on the server so the next deploy uses keys:
+
+```powershell
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@178.105.92.47 "mkdir -p .ssh && chmod 700 .ssh && cat >> .ssh/authorized_keys && chmod 600 .ssh/authorized_keys"
+```
+
+(Enter the same root password when prompted.) After that, `.\scripts\deploy-to-server.ps1` works without the password env.
+
 ## Bash (WSL / Linux / macOS)
 
 ```bash
