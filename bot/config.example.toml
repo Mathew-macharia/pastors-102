@@ -42,7 +42,7 @@ tip_lamports_max = 3000000
 
 [buy]
 # Per-wallet random buy SOL range. 40 wallets * avg = total entry size.
-# NOTE: If you are funding wallets with ~0.02 SOL (1 SOL total budget on Binance),
+# NOTE: If you are funding wallets with ~0.02 SOL (1 SOL total budget via OKX+Bybit),
 # you MUST keep these maximums around 0.01 to 0.015 SOL to leave room for fees!
 min_sol = 0.01
 max_sol = 0.015
@@ -80,7 +80,7 @@ compute_unit_limit = 100000
 # strategy::build_sell_wave.
 slippage_bps = 2000
 
-# Number of Solana slots (~400ms each) to wait between buy landing and sell.
+# Number of Solana   (~400ms each) to wait between buy landing and sell.
 # 0 = sell immediately after buy lands (next available slot)
 # 5 = ~2 seconds          25  = ~10 seconds
 # 150 = ~1 minute         750 = ~5 minutes

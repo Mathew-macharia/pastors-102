@@ -4,7 +4,7 @@
 
 This pipeline adds friction for human investigators but provides **zero protection** against professional on-chain clustering algorithms or high-frequency 2026 sniper bots. Value-flow algorithms will instantly trace the origin back to your single Treasury wallet, group your 40 wallets into one cluster, and blacklist your token.
 
-**To achieve true stealth, use `binance_funder/` instead.**
+**To achieve true stealth, use `binance_funder/` (OKX + Bybit split withdrawals) instead.**
 
 ---
 

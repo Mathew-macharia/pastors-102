@@ -12,9 +12,9 @@ To successfully evade on-chain clustering and wash-trade detection, you must fol
 
 1.  **`wallets/` (Generation)**
     *   Generates 40 fresh Solana keypairs locally.
-2.  **`binance_funder/` (Stealth Inflow)**
-    *   Withdraws SOL *directly* from Binance to each of your 40 wallets using the Binance API. 
-    *   *Why?* It completely breaks the "Hub-and-Spoke" cluster model. To the blockchain, your wallets look like 40 random Binance users.
+2.  **`binance_funder/` (Stealth Inflow — Option B)**
+    *   Withdraws SOL *directly* from **OKX + Bybit** (split 24 / 16 by default) to your 40 wallets via each exchange’s REST API — not from a single treasury key you control on-chain.
+    *   *Why?* It breaks the obvious hub-and-spoke pattern. On-chain, funding traces to two major CEX hot-wallet systems instead of one self-custody fan-out.
 3.  **`bot/` (The Sniper)**
     *   High-speed Rust bot that uses **8 atomic Jito bundles** to make all 40 wallets buy your token in the same slot.
     *   Sells `N` blocks later using a **dual-path simultaneous fire** (Jito + Helius Sender) to guarantee rapid exit.
@@ -23,7 +23,7 @@ To successfully evade on-chain clustering and wash-trade detection, you must fol
     *   *Why?* If you send the profits back to a single deposit address, you instantly doxx your cluster.
 
 ### 🚨 DEPRECATED PHASES (DO NOT USE)
-The folders `funder/` and `multihop/` are deprecated. They were built for an older standard of stealth. If you use them, 2026 sniper bots will flag your 40 wallets as a Wash Trade / Rug Risk because they trace all funding back to a single Treasury wallet. Use `binance_funder/` instead.
+The folders `funder/` and `multihop/` are deprecated. They were built for an older standard of stealth. If you use them, 2026 sniper bots will flag your 40 wallets as a Wash Trade / Rug Risk because they trace all funding back to a single Treasury wallet. Use `binance_funder/` (OKX + Bybit split) instead.
 
 ---
 
@@ -44,7 +44,7 @@ python generate_wallets.py
 deactivate
 cd ..
 
-# 2. Fund them from Binance directly
+# 2. Fund them from OKX + Bybit (see binance_funder/README.md)
 cd binance_funder
 # pip install -r requirements.txt (set up env, see README)
 python withdraw.py

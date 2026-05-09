@@ -397,7 +397,7 @@ By itself, this bot just executes buys and sells. **Stealth is entirely dependen
 If you use the deprecated on-chain funders (`funder/` or `multihop/`), Pump.fun and 2026 sniper bots (via APIs like Sybil Shield) will instantly flag your 40 wallets as a single Wash Trade / Rug cluster. They trace the funding back to your single Treasury wallet.
 
 **To achieve true stealth and "organic" bot metrics, you MUST use the full 4-phase pipeline outlined in the root README:**
-1. Fund the 40 wallets *directly* from Binance using `binance_funder/` (breaks the inflow cluster).
+1. Fund the 40 wallets *directly* from OKX + Bybit using `binance_funder/` (split CEX inflow; breaks single-hub clustering).
 2. Buy and sell with this bot.
 3. Sweep the profits to 40 *unique* CEX deposit addresses using `sweeper/` (breaks the outflow cluster).
 4. **Throw the wallets away.** If you reuse them for a second token launch, Behavioral Clustering algorithms will flag you. One launch = 40 fresh wallets.
