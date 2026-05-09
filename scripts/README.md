@@ -1,5 +1,17 @@
 # Deploy to your VPS
 
+## SSH keys (first time)
+
+Generate a key pair on your PC (safe to re-run; it will **not** overwrite existing keys):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\generate-ssh-key-for-hetzner.ps1
+```
+
+Copy the printed **`ssh-ed25519 ...` line** into **Hetzner Cloud → Security → SSH keys**, then either attach that key when **creating** a new server or add the same line to `/root/.ssh/authorized_keys` on an existing server (after logging in with the root password from email).
+
+---
+
 Hetzner (or any Linux host) does **not** receive a `git push` from your laptop unless you set up a bare repo there. The usual flow is **clone from GitHub** on the server, or **copy** the tree with `scp` / `rsync`.
 
 ## PowerShell (Windows)
